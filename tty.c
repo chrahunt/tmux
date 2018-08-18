@@ -1210,12 +1210,6 @@ tty_write(void (*cmdfn)(struct tty *, const struct tty_ctx *),
 
 		ctx->bigger = tty_window_offset(&c->tty, w, lines, &ctx->ox,
 		    &ctx->oy, &ctx->sx, &ctx->sy);
-#if 0
-		if (c->tty.sx < w->sx || c->tty.sy - lines < w->sy) {
-			wp->flags |= PANE_REDRAW;
-			continue;
-		}
-#endif
 
 		ctx->xoff = wp->xoff;
 		ctx->yoff = wp->yoff;

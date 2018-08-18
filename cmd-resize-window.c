@@ -33,8 +33,8 @@ const struct cmd_entry cmd_resize_window_entry = {
 	.name = "resize-window",
 	.alias = "resizew",
 
-	.args = { "ADLRt:Ux:y:", 0, 1 },
-	.usage = "[-ADLRU] [-x width] [-y height] " CMD_TARGET_PANE_USAGE " "
+	.args = { "aADLRt:Ux:y:", 0, 1 },
+	.usage = "[-aADLRU] [-x width] [-y height] " CMD_TARGET_PANE_USAGE " "
 		 "[adjustment]",
 
 	.target = { 't', CMD_FIND_WINDOW, 0 },
@@ -99,6 +99,8 @@ cmd_resize_window_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (args_has(args, 'A'))
 	    default_window_size(s, &sx, &sy, WINDOW_SIZE_LARGEST);
+	else if (args_has(args, 'a'))
+	    default_window_size(s, &sx, &sy, WINDOW_SIZE_SMALLEST);
 
 	options_set_number(w->options, "window-size", WINDOW_SIZE_MANUAL);
 	resize_window(w, sx, sy);
