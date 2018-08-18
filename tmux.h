@@ -933,8 +933,8 @@ struct session {
 
 	struct event	 lock_timer;
 
-	u_int		 sx;
-	u_int		 sy;
+	u_int		 default_sx;
+	u_int		 default_sy;
 
 	struct winlink	*curw;
 	struct winlink_stack lastw;
@@ -1928,6 +1928,7 @@ void	 status_prompt_load_history(void);
 void	 status_prompt_save_history(void);
 
 /* resize.c */
+void	 default_window_size(struct session *, u_int *, u_int *);
 void	 recalculate_sizes(void);
 
 /* input.c */

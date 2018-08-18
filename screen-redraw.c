@@ -461,6 +461,7 @@ screen_redraw_screen(struct client *c, int draw_panes, int draw_status,
 	//      a command (resize-window - flags to adjust, set or set to
 	//                 client?)
 	// XXX get rid of aggressize-resize?
+	// XXX would s->default_s[xy] be better as an option?
 	//
 	// XXX maybe a way to force offset to a particular part of window
 	// XXX maybe do not resize to smaller until asked
@@ -594,7 +595,7 @@ screen_redraw_draw_status(struct screen_redraw_ctx *ctx)
 	if (ctx->top)
 		y = 0;
 	else
-		y = ctx->sy;
+		y = c->tty.sx - ctx->lines;
 	for (i = 0; i < ctx->lines; i++)
 		tty_draw_line(tty, NULL, s, 0, i, UINT_MAX, 0, y + i);
 }

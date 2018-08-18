@@ -23,6 +23,57 @@
 #include "tmux.h"
 
 void
+default_window_size(struct session *s, u_int *sx, u_int *sy)
+{
+	struct client	*c;
+	u_int		 cx, cy;
+	int		 type;
+
+	type = options_get_number(global_w_options, "window-size");
+	if (type == WINDOW_SIZE_MANUAL)
+		goto manual;
+
+	if (type == WINDOW_SIZE_LARGEST) {
+		*sx = *sy = 0;
+		TAILQ_FOREACH(c, &clients, entry) {
+			if (c->session != s)
+				continue;
+
+			cx = c->tty.sx;
+			cy = c->tty.sy - tty_status_lines(c);
+
+			if (cx > *sx)
+				*sx = cx;
+			if (cx > *sy)
+				*sy = cy;
+		}
+		if (*sx == 0 || *sy == 0)
+			goto manual;
+	} else if (type == WINDOW_SIZE_SMALLEST) {
+		*sx = *sy = UINT_MAX;
+		TAILQ_FOREACH(c, &clients, entry) {
+			if (c->session != s)
+				continue;
+
+			cx = c->tty.sx;
+			cy = c->tty.sy - tty_status_lines(c);
+
+			if (cx < *sx)
+				*sx = cx;
+			if (cx < *sy)
+				*sy = cy;
+		}
+		if (*sx == UINT_MAX || *sy == UINT_MAX)
+			goto manual;
+	}
+	return;
+
+manual:
+	*sx = s->default_sx;
+	*sy = s->default_sy;
+}
+
+void
 recalculate_sizes(void)
 {
 	struct session		*s;
@@ -34,9 +85,9 @@ recalculate_sizes(void)
 
 	/* Clear attached flags for each session. */
 	RB_FOREACH(s, sessions, &sessions) {
-	    s->flags |= SESSION_UNATTACHED;
-	    s->attached = 0;
-	    status_update_saved(s);
+		s->flags |= SESSION_UNATTACHED;
+		s->attached = 0;
+		status_update_saved(s);
 	}
 
 	/* Set attached flags for any attached sessions. */

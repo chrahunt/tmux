@@ -1330,8 +1330,6 @@ format_defaults_session(struct format_tree *ft, struct session *s)
 
 	format_add(ft, "session_name", "%s", s->name);
 	format_add(ft, "session_windows", "%u", winlink_count(&s->windows));
-	format_add(ft, "session_width", "%u", s->sx);
-	format_add(ft, "session_height", "%u", s->sy);
 	format_add(ft, "session_id", "$%u", s->id);
 
 	sg = session_group_contains(s);

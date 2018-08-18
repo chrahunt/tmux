@@ -143,8 +143,8 @@ session_create(const char *prefix, const char *name, int argc, char **argv,
 		memcpy(s->tio, tio, sizeof *s->tio);
 	}
 
-	s->sx = sx;
-	s->sy = sy;
+	s->default_sx = sx;
+	s->default_sy = sy;
 
 	if (name != NULL) {
 		s->name = xstrdup(name);
@@ -349,7 +349,7 @@ session_new(struct session *s, const char *name, int argc, char **argv,
 	struct winlink	*wl;
 	struct environ	*env;
 	const char	*shell;
-	u_int		 hlimit;
+	u_int		 hlimit, sx, sy;
 
 	if ((wl = winlink_add(&s->windows, idx)) == NULL) {
 		xasprintf(cause, "index in use: %d", idx);
@@ -361,10 +361,11 @@ session_new(struct session *s, const char *name, int argc, char **argv,
 	if (*shell == '\0' || areshell(shell))
 		shell = _PATH_BSHELL;
 
+	default_window_size(s, &sx, &sy);
 	hlimit = options_get_number(s->options, "history-limit");
 	env = environ_for_session(s, 0);
 	w = window_create_spawn(name, argc, argv, path, shell, cwd, env, s->tio,
-	    s->sx, s->sy, hlimit, cause);
+	    sx, sy, hlimit, cause);
 	if (w == NULL) {
 		winlink_remove(&s->windows, wl);
 		environ_free(env);
