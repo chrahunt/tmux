@@ -862,11 +862,48 @@ tty_redraw_region(struct tty *tty, const struct tty_ctx *ctx)
 	}
 }
 
+static int
+tty_clamp_line(const struct tty_ctx *ctx, u_int px, u_int py, u_int nx,
+    u_int *i, u_int *x, u_int *rx)
+{
+	struct window_pane	*wp = ctx->wp;
+	u_int			 xoff = wp->xoff + px, yoff = wp->yoff + py;
+
+	if (xoff + nx <= ctx->ox || xoff >= ctx->ox + ctx->sx ||
+	    yoff < ctx->oy || yoff >= ctx->oy + ctx->sy)
+		return (0);
+
+	if (xoff >= ctx->ox && xoff + nx <= ctx->ox + ctx->sx) {
+		/* All visible. */
+		*i = 0;
+		*x = xoff - ctx->ox;
+		*rx = nx;
+	} else if (xoff < ctx->ox && xoff + nx > ctx->ox + ctx->sx) {
+		/* Both left and right not visible. */
+		*i = ctx->ox;
+		*x = 0;
+		*rx = ctx->sx;
+	} else if (xoff < ctx->ox) {
+		/* Left not visible. */
+		*i = ctx->ox - xoff;
+		*x = 0;
+		*rx = nx - *i;
+	} else {
+		/* Right not visible. */
+		*i = 0;
+		*x = xoff - ctx->ox;
+		*rx = nx - (xoff + nx - ctx->sx);
+	}
+	return (1);
+}
+
 static void
 tty_clear_line(struct tty *tty, const struct window_pane *wp, u_int py,
     u_int px, u_int nx, u_int bg)
 {
-	log_debug("%s: %u at %u,%u", __func__, nx, px, py);
+	struct client	*c = tty->client;
+
+	log_debug("%s: %s, %u at %u,%u", __func__, c->name, nx, px, py);
 
 	/* Nothing to clear. */
 	if (nx == 0)
@@ -902,13 +939,80 @@ tty_clear_line(struct tty *tty, const struct window_pane *wp, u_int py,
 }
 
 static void
+tty_clear_pane_line(struct tty *tty, const struct tty_ctx *ctx, u_int py,
+    u_int px, u_int nx, u_int bg)
+{
+	u_int	i, x, rx;
+
+	if (tty_clamp_line(ctx, px, py, nx, &i, &x, &rx))
+		tty_clear_line(tty, ctx->wp, py - ctx->oy, x, rx, bg);
+}
+
+static int
+tty_clamp_area(const struct tty_ctx *ctx, u_int px, u_int py, u_int nx,
+    u_int ny, u_int *i, u_int *j, u_int *x, u_int *y, u_int *rx, u_int *ry)
+{
+	struct window_pane	*wp = ctx->wp;
+	u_int			 xoff = wp->xoff + px, yoff = wp->yoff + py;
+
+	if (xoff + nx <= ctx->ox || xoff >= ctx->ox + ctx->sx ||
+	    yoff + ny <= ctx->oy || yoff >= ctx->oy + ctx->sy)
+		return (0);
+
+	if (xoff >= ctx->ox && xoff + nx <= ctx->ox + ctx->sx) {
+		/* All visible. */
+		*i = 0;
+		*x = xoff - ctx->ox;
+		*rx = nx;
+	} else if (xoff < ctx->ox && xoff + nx > ctx->ox + ctx->sx) {
+		/* Both left and right not visible. */
+		*i = ctx->ox;
+		*x = 0;
+		*rx = ctx->sx;
+	} else if (xoff < ctx->ox) {
+		/* Left not visible. */
+		*i = ctx->ox - xoff;
+		*x = 0;
+		*rx = nx - *i;
+	} else {
+		/* Right not visible. */
+		*i = 0;
+		*x = xoff - ctx->ox;
+		*rx = nx - (xoff + nx - ctx->sx);
+	}
+	if (yoff >= ctx->oy && yoff + ny <= ctx->oy + ctx->sy) {
+		/* All visible. */
+		*j = 0;
+		*y = yoff - ctx->oy;
+		*ry = ny;
+	} else if (yoff < ctx->oy && yoff + ny > ctx->oy + ctx->sy) {
+		/* Both left and right not visible. */
+		*j = ctx->oy;
+		*y = 0;
+		*ry = ctx->sy;
+	} else if (yoff < ctx->oy) {
+		/* Left not visible. */
+		*j = ctx->oy - yoff;
+		*y = 0;
+		*ry = ny - *j;
+	} else {
+		/* Right not visible. */
+		*j = 0;
+		*y = yoff - ctx->oy;
+		*ry = ny - (yoff + ny - ctx->sy);
+	}
+	return (1);
+}
+
+static void
 tty_clear_area(struct tty *tty, const struct window_pane *wp, u_int py,
     u_int ny, u_int px, u_int nx, u_int bg)
 {
-	u_int	yy;
-	char	tmp[64];
+	struct client	*c = tty->client;
+	u_int		 yy;
+	char		 tmp[64];
 
-	log_debug("%s: %u,%u at %u,%u", __func__, nx, ny, px, py);
+	log_debug("%s: %s, %u,%u at %u,%u", __func__, c->name, nx, ny, px, py);
 
 	/* Nothing to clear. */
 	if (nx == 0 || ny == 0)
@@ -972,46 +1076,31 @@ tty_clear_area(struct tty *tty, const struct window_pane *wp, u_int py,
 }
 
 static void
+tty_clear_pane_area(struct tty *tty, const struct tty_ctx *ctx, u_int py,
+    u_int ny, u_int px, u_int nx, u_int bg)
+{
+	u_int	i, j, x, y, rx, ry;
+
+	if (tty_clamp_area(ctx, px, py, nx, ny, &i, &j, &x, &y, &rx, &ry))
+		tty_clear_area(tty, ctx->wp, y, ry, x, rx, bg);
+}
+
+static void
 tty_draw_pane(struct tty *tty, const struct tty_ctx *ctx, u_int py)
 {
 	struct window_pane	*wp = ctx->wp;
 	struct screen		*s = wp->screen;
 	u_int			 xoff = ctx->xoff, yoff = ctx->yoff;
-	u_int			 size = screen_size_x(s), i, x, width;
+	u_int			 nx = screen_size_x(s), i, x, rx;
 
 	log_debug("%s: %s %u %d", __func__, tty->client->name, py, ctx->bigger);
 
 	if (!ctx->bigger) {
-		tty_draw_line(tty, wp, s, 0, py, size, xoff, yoff + py);
+		tty_draw_line(tty, wp, s, 0, py, nx, xoff, yoff + py);
 		return;
 	}
-
-	if (xoff + size <= ctx->ox || xoff > ctx->ox + ctx->sx ||
-	    yoff + py < ctx->oy || yoff + py >= ctx->oy + ctx->sy)
-		return;
-
-	if (xoff >= ctx->ox && xoff + size <= ctx->ox + ctx->sx) {
-		/* All visible. */
-		i = 0;
-		x = xoff - ctx->ox;
-		width = size;
-	} else if (xoff < ctx->ox && xoff + size > ctx->ox + ctx->sx) {
-		/* Both left and right not visible. */
-		i = ctx->ox;
-		x = 0;
-		width = ctx->sx;
-	} else if (xoff < ctx->ox) {
-		/* Left not visible. */
-		i = ctx->ox - xoff;
-		x = 0;
-		width = size - i;
-	} else {
-		/* Right not visible. */
-		i = 0;
-		x = xoff - ctx->ox;
-		width = size - (xoff + size - ctx->sx);
-	}
-	tty_draw_line(tty, wp, s, i, py, width, x, yoff + py - ctx->oy);
+	if (tty_clamp_line(ctx, 0, py, nx, &i, &x, &rx))
+		tty_draw_line(tty, wp, s, i, py, rx, x, yoff + py - ctx->oy);
 }
 
 static const struct grid_cell *
@@ -1272,7 +1361,7 @@ tty_cmd_deletecharacter(struct tty *tty, const struct tty_ctx *ctx)
 void
 tty_cmd_clearcharacter(struct tty *tty, const struct tty_ctx *ctx)
 {
-	if (ctx->bigger) { /* XXX */
+	if (ctx->bigger) {
 		tty_draw_pane(tty, ctx, ctx->ocy);
 		return;
 	}
@@ -1338,15 +1427,10 @@ tty_cmd_clearline(struct tty *tty, const struct tty_ctx *ctx)
 	struct window_pane	*wp = ctx->wp;
 	u_int			 nx, py = ctx->yoff + ctx->ocy;
 
-	if (ctx->bigger) { /* XXX */
-		tty_draw_pane(tty, ctx, ctx->ocy);
-		return;
-	}
-
 	tty_default_attributes(tty, wp, ctx->bg);
 
 	nx = screen_size_x(wp->screen);
-	tty_clear_line(tty, wp, py, ctx->xoff, nx, ctx->bg);
+	tty_clear_pane_line(tty, ctx, py, 0, nx, ctx->bg);
 }
 
 void
@@ -1355,15 +1439,10 @@ tty_cmd_clearendofline(struct tty *tty, const struct tty_ctx *ctx)
 	struct window_pane	*wp = ctx->wp;
 	u_int			 nx, py = ctx->yoff + ctx->ocy;
 
-	if (ctx->bigger) { /* XXX */
-		tty_draw_pane(tty, ctx, ctx->ocy);
-		return;
-	}
-
 	tty_default_attributes(tty, wp, ctx->bg);
 
 	nx = screen_size_x(wp->screen) - ctx->ocx;
-	tty_clear_line(tty, wp, py, ctx->xoff + ctx->ocx, nx, ctx->bg);
+	tty_clear_pane_line(tty, ctx, py, ctx->ocx, nx, ctx->bg);
 }
 
 void
@@ -1372,14 +1451,9 @@ tty_cmd_clearstartofline(struct tty *tty, const struct tty_ctx *ctx)
 	struct window_pane	*wp = ctx->wp;
 	u_int			 py = ctx->yoff + ctx->ocy;
 
-	if (ctx->bigger) { /* XXX */
-		tty_draw_pane(tty, ctx, ctx->ocy);
-		return;
-	}
-
 	tty_default_attributes(tty, wp, ctx->bg);
 
-	tty_clear_line(tty, wp, py, ctx->xoff, ctx->ocx + 1, ctx->bg);
+	tty_clear_pane_line(tty, ctx, py, 0, ctx->ocx + 1, ctx->bg);
 }
 
 void
@@ -1485,28 +1559,23 @@ tty_cmd_clearendofscreen(struct tty *tty, const struct tty_ctx *ctx)
 	struct window_pane	*wp = ctx->wp;
 	u_int			 px, py, nx, ny;
 
-	if (ctx->bigger) { /* XXX */
-		wp->flags |= PANE_REDRAW;
-		return;
-	}
-
 	tty_default_attributes(tty, wp, ctx->bg);
 
 	tty_region_pane(tty, ctx, 0, screen_size_y(wp->screen) - 1);
 	tty_margin_off(tty);
 
-	px = ctx->xoff;
+	px = 0;
 	nx = screen_size_x(wp->screen);
-	py = ctx->yoff + ctx->ocy + 1;
+	py = ctx->ocy + 1;
 	ny = screen_size_y(wp->screen) - ctx->ocy - 1;
 
-	tty_clear_area(tty, wp, py, ny, px, nx, ctx->bg);
+	tty_clear_pane_area(tty, ctx, py, ny, px, nx, ctx->bg);
 
-	px = ctx->xoff + ctx->ocx;
+	px = ctx->ocx;
 	nx = screen_size_x(wp->screen) - ctx->ocx;
-	py = ctx->yoff + ctx->ocy;
+	py = ctx->ocy;
 
-	tty_clear_line(tty, wp, py, px, nx, ctx->bg);
+	tty_clear_pane_line(tty, ctx, py, px, nx, ctx->bg);
 }
 
 void
@@ -1515,28 +1584,23 @@ tty_cmd_clearstartofscreen(struct tty *tty, const struct tty_ctx *ctx)
 	struct window_pane	*wp = ctx->wp;
 	u_int			 px, py, nx, ny;
 
-	if (ctx->bigger) { /* XXX */
-		wp->flags |= PANE_REDRAW;
-		return;
-	}
-
 	tty_default_attributes(tty, wp, ctx->bg);
 
 	tty_region_pane(tty, ctx, 0, screen_size_y(wp->screen) - 1);
 	tty_margin_off(tty);
 
-	px = ctx->xoff;
+	px = 0;
 	nx = screen_size_x(wp->screen);
-	py = ctx->yoff;
+	py = 0;
 	ny = ctx->ocy - 1;
 
-	tty_clear_area(tty, wp, py, ny, px, nx, ctx->bg);
+	tty_clear_pane_area(tty, ctx, py, ny, px, nx, ctx->bg);
 
-	px = ctx->xoff;
+	px = 0;
 	nx = ctx->ocx + 1;
-	py = ctx->yoff + ctx->ocy;
+	py = ctx->ocy;
 
-	tty_clear_line(tty, wp, py, px, nx, ctx->bg);
+	tty_clear_pane_line(tty, ctx, py, px, nx, ctx->bg);
 }
 
 void
@@ -1545,22 +1609,17 @@ tty_cmd_clearscreen(struct tty *tty, const struct tty_ctx *ctx)
 	struct window_pane	*wp = ctx->wp;
 	u_int			 px, py, nx, ny;
 
-	if (ctx->bigger) { /* XXX */
-		wp->flags |= PANE_REDRAW;
-		return;
-	}
-
 	tty_default_attributes(tty, wp, ctx->bg);
 
 	tty_region_pane(tty, ctx, 0, screen_size_y(wp->screen) - 1);
 	tty_margin_off(tty);
 
-	px = ctx->xoff;
+	px = 0;
 	nx = screen_size_x(wp->screen);
-	py = ctx->yoff;
+	py = 0;
 	ny = screen_size_y(wp->screen);
 
-	tty_clear_area(tty, wp, py, ny, px, nx, ctx->bg);
+	tty_clear_pane_area(tty, ctx, py, ny, px, nx, ctx->bg);
 }
 
 void
@@ -1570,7 +1629,7 @@ tty_cmd_alignmenttest(struct tty *tty, const struct tty_ctx *ctx)
 	struct screen		*s = wp->screen;
 	u_int			 i, j;
 
-	if (ctx->bigger) { /* XXX */
+	if (ctx->bigger) {
 		wp->flags |= PANE_REDRAW;
 		return;
 	}
