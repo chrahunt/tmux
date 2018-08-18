@@ -260,7 +260,7 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 	}
 	if (strcmp(name, "pane-border-status") == 0) {
 		RB_FOREACH(w, windows, &windows)
-			layout_fix_panes(w, w->sx, w->sy);
+			layout_fix_panes(w);
 	}
 	RB_FOREACH(s, sessions, &sessions)
 		status_update_saved(s);

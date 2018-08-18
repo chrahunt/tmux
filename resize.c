@@ -28,12 +28,32 @@ resize_window(struct window *w, u_int sx, u_int sy)
 	struct window_pane	*wp;
 	int			 zoomed;
 
-	/* Resize the window. */
+	/* Check size limits. */
+	if (sx < WINDOW_MINIMUM)
+		sx = WINDOW_MINIMUM;
+	if (sx > WINDOW_MAXIMUM)
+		sx = WINDOW_MAXIMUM;
+	if (sy < WINDOW_MINIMUM)
+		sy = WINDOW_MINIMUM;
+	if (sy > WINDOW_MAXIMUM)
+		sy = WINDOW_MAXIMUM;
+
+	/* If the window is zoomed, unzoom. */
 	zoomed = w->flags & WINDOW_ZOOMED;
 	if (zoomed)
 		window_unzoom(w);
+
+	/* Resize the layout first. */
 	layout_resize(w, sx, sy);
+
+	/* Resize the window, it can be no smaller than the layout. */
+	if (sx < w->layout_root->sx)
+		sx = w->layout_root->sx;
+	if (sy < w->layout_root->sy)
+		sy = w->layout_root->sy;
 	window_resize(w, sx, sy);
+
+	/* Restore the window zoom state. */
 	if (zoomed && window_pane_visible(w->active))
 		window_zoom(w->active);
 
@@ -97,22 +117,31 @@ default_window_size(struct session *s, u_int *sx, u_int *sy, int type)
 		if (*sx == UINT_MAX || *sy == UINT_MAX)
 			goto manual;
 	}
-	return;
+	goto done;
 
 manual:
 	*sx = s->default_sx;
 	*sy = s->default_sy;
+
+done:
+	if (*sx < WINDOW_MINIMUM)
+		*sx = WINDOW_MINIMUM;
+	if (*sx > WINDOW_MAXIMUM)
+		*sx = WINDOW_MAXIMUM;
+	if (*sy < WINDOW_MINIMUM)
+		*sy = WINDOW_MINIMUM;
+	if (*sy > WINDOW_MAXIMUM)
+		*sy = WINDOW_MAXIMUM;
 }
 
 void
 recalculate_sizes(void)
 {
-	struct session		*s;
-	struct client		*c;
-	struct window		*w;
-	struct window_pane	*wp;
-	u_int			 sx, sy, cx, cy;
-	int			 flags, type, current, has, zoomed;
+	struct session	*s;
+	struct client	*c;
+	struct window	*w;
+	u_int		 sx, sy, cx, cy;
+	int		 flags, type, current, has;
 
 	/* Clear attached flags for each session. */
 	RB_FOREACH(s, sessions, &sessions) {

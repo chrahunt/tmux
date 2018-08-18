@@ -600,7 +600,7 @@ window_unzoom(struct window *w)
 		wp->layout_cell = wp->saved_layout_cell;
 		wp->saved_layout_cell = NULL;
 	}
-	layout_fix_panes(w, w->sx, w->sy);
+	layout_fix_panes(w);
 	notify_window("window-layout-changed", w);
 
 	return (0);

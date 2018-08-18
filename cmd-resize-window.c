@@ -100,11 +100,6 @@ cmd_resize_window_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'A'))
 	    default_window_size(s, &sx, &sy, WINDOW_SIZE_LARGEST);
 
-	if (sx < WINDOW_MINIMUM)
-		sx = WINDOW_MINIMUM;
-	if (sy < WINDOW_MINIMUM)
-		sy = WINDOW_MINIMUM;
-
 	options_set_number(w->options, "window-size", WINDOW_SIZE_MANUAL);
 	resize_window(w, sx, sy);
 
