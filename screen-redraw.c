@@ -438,7 +438,6 @@ screen_redraw_screen(struct client *c, int draw_panes, int draw_status,
 		draw_status = 0;
 
 	// XXX mouse clicks
-	// XXX change tty_clear_* to adjust for offset and use them again
 	// XXX for tty_cmd_cell and tty_cmd_cells draw directly if will fit
 	// XXX some optimization for drawing with cursor off, eg emacs
 	//     moves to status line and back a lot - should avoid
@@ -450,8 +449,7 @@ screen_redraw_screen(struct client *c, int draw_panes, int draw_status,
 	//     moved offset when it gets close to an edge
 	//
 	// XXX would s->default_s[xy] be better as an option?
-	// XXX edge cases - very small windows? looks like status line
-	//     gets mixed up
+	// XXX edge cases - very small windows?
 	//
 	// XXX a way to force offset to a particular part of window, scroll
 	//     around the window
@@ -583,7 +581,7 @@ screen_redraw_draw_status(struct screen_redraw_ctx *ctx)
 	if (ctx->top)
 		y = 0;
 	else
-		y = c->tty.sx - ctx->lines;
+		y = c->tty.sy - ctx->lines;
 	for (i = 0; i < ctx->lines; i++)
 		tty_draw_line(tty, NULL, s, 0, i, UINT_MAX, 0, y + i);
 }
