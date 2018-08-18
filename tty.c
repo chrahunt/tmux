@@ -1623,7 +1623,16 @@ tty_cmd_cells(struct tty *tty, const struct tty_ctx *ctx)
 	struct window_pane	*wp = ctx->wp;
 
 	if (ctx->bigger) { /* XXX */
-		wp->flags |= PANE_REDRAW;
+		if (!ctx->wrapped ||
+		    !tty_pane_full_width(tty, ctx) ||
+		    (tty->term->flags & TERM_EARLYWRAP) ||
+		    ctx->xoff + ctx->ocx != 0 ||
+		    ctx->yoff + ctx->ocy != tty->cy + 1 ||
+		    tty->cx < tty->sx ||
+		    tty->cy == tty->rlower)
+			tty_draw_pane(tty, ctx, ctx->ocy);
+		else
+			wp->flags |= PANE_REDRAW;
 		return;
 	}
 

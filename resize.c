@@ -83,7 +83,7 @@ default_window_size(struct session *s, u_int *sx, u_int *sy, int type)
 
 			if (cx > *sx)
 				*sx = cx;
-			if (cx > *sy)
+			if (cy > *sy)
 				*sy = cy;
 		}
 		if (*sx == 0 || *sy == 0)
@@ -99,7 +99,7 @@ default_window_size(struct session *s, u_int *sx, u_int *sy, int type)
 
 			if (cx < *sx)
 				*sx = cx;
-			if (cx < *sy)
+			if (cy < *sy)
 				*sy = cy;
 		}
 		if (*sx == UINT_MAX || *sy == UINT_MAX)
@@ -183,7 +183,7 @@ recalculate_sizes(void)
 
 				if (cx > sx)
 					sx = cx;
-				if (cx > sy)
+				if (cy > sy)
 					sy = cy;
 			}
 			if (sx == 0 || sy == 0)
@@ -205,7 +205,7 @@ recalculate_sizes(void)
 
 				if (cx < sx)
 					sx = cx;
-				if (cx < sy)
+				if (cy < sy)
 					sy = cy;
 			}
 			if (sx == UINT_MAX || sy == UINT_MAX)
