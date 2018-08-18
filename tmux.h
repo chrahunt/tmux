@@ -937,9 +937,6 @@ struct session {
 
 	struct event	 lock_timer;
 
-	u_int		 default_sx;
-	u_int		 default_sy;
-
 	struct winlink	*curw;
 	struct winlink_stack lastw;
 	struct winlinks	 windows;
@@ -2317,7 +2314,7 @@ struct session	*session_find_by_id_str(const char *);
 struct session	*session_find_by_id(u_int);
 struct session	*session_create(const char *, const char *, int, char **,
 		     const char *, const char *, struct environ *,
-		     struct termios *, int, u_int, u_int, char **);
+		     struct options *, struct termios *, int, char **);
 void		 session_destroy(struct session *, const char *);
 void		 session_add_ref(struct session *, const char *);
 void		 session_remove_ref(struct session *, const char *);

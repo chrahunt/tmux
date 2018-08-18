@@ -25,8 +25,7 @@
 void
 resize_window(struct window *w, u_int sx, u_int sy)
 {
-	struct window_pane	*wp;
-	int			 zoomed;
+	int	zoomed;
 
 	/* Check size limits. */
 	if (sx < WINDOW_MINIMUM)
@@ -66,6 +65,7 @@ default_window_size(struct session *s, u_int *sx, u_int *sy, int type)
 {
 	struct client	*c;
 	u_int		 cx, cy;
+	const char	*value;
 
 	if (type == -1)
 		type = options_get_number(global_w_options, "window-size");
@@ -108,8 +108,11 @@ default_window_size(struct session *s, u_int *sx, u_int *sy, int type)
 	goto done;
 
 manual:
-	*sx = s->default_sx;
-	*sy = s->default_sy;
+	value = options_get_string(s->options, "default-size");
+	if (sscanf(value, "%ux%u", sx, sy) != 2) {
+		*sx = 80;
+		*sy = 24;
+	}
 
 done:
 	if (*sx < WINDOW_MINIMUM)

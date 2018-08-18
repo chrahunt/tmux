@@ -196,6 +196,12 @@ const struct options_table_entry options_table[] = {
 	  .default_str = _PATH_BSHELL
 	},
 
+	{ .name = "default-size",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .default_str = "80x24"
+	},
+
 	{ .name = "destroy-unattached",
 	  .type = OPTIONS_TABLE_FLAG,
 	  .scope = OPTIONS_TABLE_SESSION,

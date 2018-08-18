@@ -257,7 +257,6 @@ layout_fix_panes(struct window *w)
 {
 	struct window_pane	*wp;
 	struct layout_cell	*lc;
-	u_int			 sx, sy;
 	int			 shift, status;
 
 	status = options_get_number(w->options, "pane-border-status");

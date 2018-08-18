@@ -112,8 +112,8 @@ session_find_by_id(u_int id)
 /* Create a new session. */
 struct session *
 session_create(const char *prefix, const char *name, int argc, char **argv,
-    const char *path, const char *cwd, struct environ *env, struct termios *tio,
-    int idx, u_int sx, u_int sy, char **cause)
+    const char *path, const char *cwd, struct environ *env, struct options *oo,
+    struct termios *tio, int idx, char **cause)
 {
 	struct session	*s;
 	struct winlink	*wl;
@@ -132,7 +132,7 @@ session_create(const char *prefix, const char *name, int argc, char **argv,
 	if (env != NULL)
 		environ_copy(env, s->environ);
 
-	s->options = options_create(global_s_options);
+	s->options = oo;
 	s->hooks = hooks_create(global_hooks);
 
 	status_update_saved(s);
@@ -142,9 +142,6 @@ session_create(const char *prefix, const char *name, int argc, char **argv,
 		s->tio = xmalloc(sizeof *s->tio);
 		memcpy(s->tio, tio, sizeof *s->tio);
 	}
-
-	s->default_sx = sx;
-	s->default_sy = sy;
 
 	if (name != NULL) {
 		s->name = xstrdup(name);
