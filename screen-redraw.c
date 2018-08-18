@@ -451,7 +451,7 @@ screen_redraw_screen(struct client *c, int draw_panes, int draw_status,
 	// XXX get rid of aggressize-resize?
 	// XXX would s->default_s[xy] be better as an option?
 	// XXX edge cases - very small windows? looks like status line
-	// gets mixed up
+	//     gets mixed up
 	//
 	// XXX a way to force offset to a particular part of window, scroll
 	//     around the window

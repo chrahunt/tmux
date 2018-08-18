@@ -1130,11 +1130,19 @@ struct tty_ctx {
 	u_int		 orupper;
 	u_int		 orlower;
 
+	/* Pane offset. */
 	u_int		 xoff;
 	u_int		 yoff;
 
 	/* The background colour used for clearing (erasing). */
 	u_int		 bg;
+
+	/* Window offset and size. */
+	int		 bigger;
+	u_int		 ox;
+	u_int		 oy;
+	u_int		 sx;
+	u_int		 sy;
 };
 
 /* Saved message entry. */
