@@ -1940,7 +1940,8 @@ void	 status_prompt_save_history(void);
 
 /* resize.c */
 void	 resize_window(struct window *, u_int, u_int);
-void	 default_window_size(struct session *, u_int *, u_int *, int);
+void	 default_window_size(struct session *, struct window *, u_int *,
+	     u_int *, int);
 void	 recalculate_sizes(void);
 
 /* input.c */

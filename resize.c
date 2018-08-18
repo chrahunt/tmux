@@ -61,7 +61,8 @@ resize_window(struct window *w, u_int sx, u_int sy)
 }
 
 void
-default_window_size(struct session *s, u_int *sx, u_int *sy, int type)
+default_window_size(struct session *s, struct window *w, u_int *sx, u_int *sy,
+    int type)
 {
 	struct client	*c;
 	u_int		 cx, cy;
@@ -75,7 +76,11 @@ default_window_size(struct session *s, u_int *sx, u_int *sy, int type)
 	if (type == WINDOW_SIZE_LARGEST) {
 		*sx = *sy = 0;
 		TAILQ_FOREACH(c, &clients, entry) {
-			if (c->session != s)
+			if (c->session == NULL)
+				continue;
+			if (w != NULL && !session_has(c->session, w))
+				continue;
+			if (w == NULL && c->session != s)
 				continue;
 
 			cx = c->tty.sx;
@@ -91,7 +96,11 @@ default_window_size(struct session *s, u_int *sx, u_int *sy, int type)
 	} else if (type == WINDOW_SIZE_SMALLEST) {
 		*sx = *sy = UINT_MAX;
 		TAILQ_FOREACH(c, &clients, entry) {
-			if (c->session != s)
+			if (c->session == NULL)
+				continue;
+			if (w != NULL && !session_has(c->session, w))
+				continue;
+			if (w == NULL && c->session != s)
 				continue;
 
 			cx = c->tty.sx;
