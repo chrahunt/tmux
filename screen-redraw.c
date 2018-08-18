@@ -315,7 +315,7 @@ screen_redraw_make_pane_status(struct client *c, struct window *w,
 static void
 screen_redraw_draw_pane_status(struct screen_redraw_ctx *ctx)
 {
-	struct client		*c = ctx->c;
+	struct client           *c = ctx->c;
 	struct window		*w = c->session->curw->window;
 	struct tty		*tty = &c->tty;
 	struct window_pane	*wp;
@@ -402,10 +402,10 @@ screen_redraw_update(struct client *c)
 static void
 screen_redraw_set_context(struct client *c, struct screen_redraw_ctx *ctx)
 {
-	struct session	*s = c->session;
-	struct options	*oo = s->options;
-	struct window	*w = s->curw->window;
-	struct options	*wo = w->options;
+	struct session  *s = c->session;
+	struct options  *oo = s->options;
+	struct window   *w = s->curw->window;
+	struct options  *wo = w->options;
 
 	memset(ctx, 0, sizeof *ctx);
 	ctx->c = c;
@@ -420,7 +420,6 @@ screen_redraw_set_context(struct client *c, struct screen_redraw_ctx *ctx)
 
 	log_debug("%s: %s @%u ox=%u oy=%u sx=%u sy=%u %u/%d", __func__, c->name,
 	    w->id, ctx->ox, ctx->oy, ctx->sx, ctx->sy, ctx->lines, ctx->top);
-
 }
 
 /* Redraw entire screen. */
@@ -456,6 +455,9 @@ screen_redraw_screen(struct client *c, int draw_panes, int draw_status,
 	//
 	// XXX a way to force offset to a particular part of window, scroll
 	//     around the window
+	//     option window-offset = automatic, manual
+	//     resize-window -d -l -r -u to move offset
+	//     problem is that offset is per client+window not per window
 
 	if (draw_borders)
 		screen_redraw_draw_borders(&ctx);
