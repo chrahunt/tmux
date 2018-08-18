@@ -199,6 +199,7 @@ const struct options_table_entry options_table[] = {
 	{ .name = "default-size",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SESSION,
+	  .pattern = "[0-9]*x[0-9]*",
 	  .default_str = "80x24"
 	},
 

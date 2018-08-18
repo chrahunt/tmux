@@ -1466,6 +1466,7 @@ struct options_table_entry {
 
 	const char		 *separator;
 	const char		 *style;
+	const char		 *pattern;
 };
 
 /* Common command usages. */

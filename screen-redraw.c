@@ -447,8 +447,6 @@ screen_redraw_screen(struct client *c, int draw_panes, int draw_status,
 	//     visible as possible!
 	// XXX rather than centering cursor it might be better if only
 	//     moved offset when it gets close to an edge
-	//
-	// XXX would s->default_s[xy] be better as an option?
 	// XXX edge cases - very small windows?
 	//
 	// XXX a way to force offset to a particular part of window, scroll
