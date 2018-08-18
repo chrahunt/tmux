@@ -1660,6 +1660,7 @@ struct environ *environ_for_session(struct session *, int);
 
 /* tty.c */
 void	tty_create_log(void);
+int	tty_window_bigger(struct tty *, struct window *, u_int);
 int	tty_window_offset(struct tty *, struct window *, u_int, u_int *,
 	    u_int *, u_int *, u_int *);
 void	tty_check_offset(struct window_pane *);

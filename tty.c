@@ -699,7 +699,14 @@ tty_repeat_space(struct tty *tty, u_int n)
 		tty_putn(tty, s, n, n);
 }
 
-/* Is this window larger than the terminal? */
+/* Is this window bigger than the terminal? */
+int
+tty_window_bigger(struct tty *tty, struct window *w, u_int lines)
+{
+	return (tty->sx < w->sx || tty->sy - lines < w->sy);
+}
+
+/* What offset should this window be drawn at? */
 int
 tty_window_offset(struct tty *tty, struct window *w, u_int lines, u_int *ox,
     u_int *oy, u_int *sx, u_int *sy)
@@ -707,7 +714,7 @@ tty_window_offset(struct tty *tty, struct window *w, u_int lines, u_int *ox,
 	struct window_pane	*wp = w->active;
 	u_int			 cx, cy;
 
-	if (tty->sx >= w->sx && tty->sy - lines >= w->sy) {
+	if (!tty_window_bigger(tty, w, lines)) {
 		*ox = 0;
 		*oy = 0;
 		*sx = w->sx;
