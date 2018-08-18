@@ -1164,7 +1164,7 @@ tty_write(void (*cmdfn)(struct tty *, const struct tty_ctx *),
 
 	if (wp == NULL)
 		return;
-	if ((wp->flags & (PANE_REDRAW|PANE_DROP)) || !window_pane_visible(wp))
+	if (wp->flags & (PANE_REDRAW|PANE_DROP))
 		return;
 	w = wp->window;
 

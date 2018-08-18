@@ -95,7 +95,7 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	if (args_has(args, 'm') || args_has(args, 'M')) {
-		if (args_has(args, 'm') && !window_pane_visible(wp))
+		if (args_has(args, 'm'))
 			return (CMD_RETURN_NORMAL);
 		lastwp = marked_pane.wp;
 
@@ -168,10 +168,6 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 	if (wp == w->active)
 		return (CMD_RETURN_NORMAL);
 	server_unzoom_window(wp->window);
-	if (!window_pane_visible(wp)) {
-		cmdq_error(item, "pane not visible");
-		return (CMD_RETURN_ERROR);
-	}
 	window_redraw_active_switch(w, wp);
 	if (window_set_active_pane(w, wp)) {
 		cmd_find_from_winlink_pane(current, wl, wp, 0);

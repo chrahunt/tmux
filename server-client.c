@@ -836,8 +836,6 @@ server_client_handle_key(struct client *c, key_code key)
 			return;
 		window_unzoom(w);
 		wp = window_pane_at_index(w, key - '0');
-		if (wp != NULL && !window_pane_visible(wp))
-			wp = NULL;
 		server_client_clear_identify(c, wp);
 		return;
 	}
@@ -1236,21 +1234,17 @@ server_client_reset_state(struct client *c)
 
 	/* Move cursor to pane cursor and offset. */
 	cursor = 0;
-	if (window_pane_visible(wp)) {
-		lines = status_line_size(c->session);
-		tty_window_offset(&c->tty, w, lines, &ox, &oy, &sx, &sy);
-		if (wp->xoff + s->cx >= ox &&
-		    wp->xoff + s->cx <= ox + sx &&
-		    wp->yoff + s->cy >= oy &&
-		    wp->yoff + s->cy <= oy + sy) {
-			cursor = 1;
+	lines = status_line_size(c->session);
+	tty_window_offset(&c->tty, w, lines, &ox, &oy, &sx, &sy);
+	if (wp->xoff + s->cx >= ox && wp->xoff + s->cx <= ox + sx &&
+	    wp->yoff + s->cy >= oy && wp->yoff + s->cy <= oy + sy) {
+		cursor = 1;
 
-			cx = wp->xoff + s->cx - ox;
-			cy = wp->yoff + s->cy - oy;
+		cx = wp->xoff + s->cx - ox;
+		cy = wp->yoff + s->cy - oy;
 
-			if (status_at_line(c) == 0)
-				cy += lines;
-		}
+		if (status_at_line(c) == 0)
+			cy += lines;
 	}
 	if (!cursor)
 		mode &= ~MODE_CURSOR;

@@ -1461,12 +1461,13 @@ format_defaults_winlink(struct format_tree *ft, struct winlink *wl)
 void
 format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 {
+	struct window	*w = wp->window;
 	struct grid	*gd = wp->base.grid;
 	int  		 status = wp->status;
 	u_int		 idx;
 
 	if (ft->w == NULL)
-		ft->w = wp->window;
+		ft->w = w;
 	ft->wp = wp;
 
 	format_add(ft, "history_size", "%u", gd->hsize);
@@ -1481,7 +1482,7 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 	format_add(ft, "pane_height", "%u", wp->sy);
 	format_add(ft, "pane_title", "%s", wp->base.title);
 	format_add(ft, "pane_id", "%%%u", wp->id);
-	format_add(ft, "pane_active", "%d", wp == wp->window->active);
+	format_add(ft, "pane_active", "%d", wp == w->active);
 	format_add(ft, "pane_input_off", "%d", !!(wp->flags & PANE_INPUTOFF));
 	format_add(ft, "pane_pipe", "%d", wp->pipe_fd != -1);
 
@@ -1489,25 +1490,21 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 		format_add(ft, "pane_dead_status", "%d", WEXITSTATUS(status));
 	format_add(ft, "pane_dead", "%d", wp->fd == -1);
 
-	if (window_pane_visible(wp)) {
-		format_add(ft, "pane_left", "%u", wp->xoff);
-		format_add(ft, "pane_top", "%u", wp->yoff);
-		format_add(ft, "pane_right", "%u", wp->xoff + wp->sx - 1);
-		format_add(ft, "pane_bottom", "%u", wp->yoff + wp->sy - 1);
-		format_add(ft, "pane_at_left", "%d", wp->xoff == 0);
-		format_add(ft, "pane_at_top", "%d", wp->yoff == 0);
-		format_add(ft, "pane_at_right", "%d",
-		    wp->xoff + wp->sx == wp->window->sx);
-		format_add(ft, "pane_at_bottom", "%d",
-		    wp->yoff + wp->sy == wp->window->sy);
-	}
+	format_add(ft, "pane_left", "%u", wp->xoff);
+	format_add(ft, "pane_top", "%u", wp->yoff);
+	format_add(ft, "pane_right", "%u", wp->xoff + wp->sx - 1);
+	format_add(ft, "pane_bottom", "%u", wp->yoff + wp->sy - 1);
+	format_add(ft, "pane_at_left", "%d", wp->xoff == 0);
+	format_add(ft, "pane_at_top", "%d", wp->yoff == 0);
+	format_add(ft, "pane_at_right", "%d", wp->xoff + wp->sx == w->sx);
+	format_add(ft, "pane_at_bottom", "%d", wp->yoff + wp->sy == w->sy);
 
 	format_add(ft, "pane_in_mode", "%d", wp->screen != &wp->base);
 	if (wp->mode != NULL)
 		format_add(ft, "pane_mode", "%s", wp->mode->name);
 
 	format_add(ft, "pane_synchronized", "%d",
-	    !!options_get_number(wp->window->options, "synchronize-panes"));
+	    !!options_get_number(w->options, "synchronize-panes"));
 	if (wp->searchstr != NULL)
 		format_add(ft, "pane_search_string", "%s", wp->searchstr);
 

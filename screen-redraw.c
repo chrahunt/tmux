@@ -104,8 +104,6 @@ screen_redraw_cell_border(struct client *c, u_int px, u_int py)
 
 	/* Check all the panes. */
 	TAILQ_FOREACH(wp, &w->panes, entry) {
-		if (!window_pane_visible(wp))
-			continue;
 		if ((retval = screen_redraw_cell_border1(wp, px, py)) != -1)
 			return (!!retval);
 	}
@@ -130,9 +128,6 @@ screen_redraw_check_cell(struct client *c, u_int px, u_int py, int pane_status,
 
 	if (pane_status != CELL_STATUS_OFF) {
 		TAILQ_FOREACH(wp, &w->panes, entry) {
-			if (!window_pane_visible(wp))
-				continue;
-
 			if (pane_status == CELL_STATUS_TOP)
 				line = wp->yoff - 1;
 			else
@@ -145,8 +140,6 @@ screen_redraw_check_cell(struct client *c, u_int px, u_int py, int pane_status,
 	}
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
-		if (!window_pane_visible(wp))
-			continue;
 		*wpp = wp;
 
 		/* If outside the pane and its border, skip it. */
@@ -332,8 +325,6 @@ screen_redraw_draw_pane_status(struct screen_redraw_ctx *ctx)
 	log_debug("%s: %s @%u", __func__, c->name, w->id);
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
-		if (!window_pane_visible(wp))
-			continue;
 		s = &wp->status_screen;
 
 		size = wp->status_size;
@@ -454,20 +445,16 @@ screen_redraw_screen(struct client *c, int draw_panes, int draw_status,
 	//     moves to status line and back a lot - should avoid
 	//     redrawing with that happens, maybe do not change offset
 	//     when cursor off until some timer expires
+	// XXX tty_window_offset should try to keep as much as active pane
+	//     visible as possible!
 	//
-	// XXX sizing: automatic or manual
-	//             largest, smallest, manual
-	//      get rid of force-width and force-height and set with
-	//      a command (resize-window - flags to adjust, set or set to
-	//                 what automatic would set to?)
 	// XXX get rid of aggressize-resize?
 	// XXX would s->default_s[xy] be better as an option?
-	// XXX do not allow windows smaller than layout and get rid of
-	//     window_pane_visible
-	// XXX edge cases - very small windows?
-	// XXX maximum window size
+	// XXX edge cases - very small windows? looks like status line
+	// gets mixed up
 	//
-	// XXX maybe a way to force offset to a particular part of window
+	// XXX a way to force offset to a particular part of window, scroll
+	//     around the window
 
 	if (draw_borders)
 		screen_redraw_draw_borders(&ctx);
@@ -485,9 +472,6 @@ void
 screen_redraw_pane(struct client *c, struct window_pane *wp)
 {
 	struct screen_redraw_ctx	 ctx;
-
-	if (!window_pane_visible(wp))
-		return;
 
 	screen_redraw_set_context(c, &ctx);
 
@@ -575,8 +559,6 @@ screen_redraw_draw_panes(struct screen_redraw_ctx *ctx)
 	log_debug("%s: %s @%u", __func__, c->name, w->id);
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
-		if (!window_pane_visible(wp))
-			continue;
 		screen_redraw_draw_pane(ctx, wp);
 		if (c->flags & CLIENT_IDENTIFY)
 			screen_redraw_draw_number(ctx, wp);

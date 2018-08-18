@@ -54,20 +54,8 @@ resize_window(struct window *w, u_int sx, u_int sy)
 	window_resize(w, sx, sy);
 
 	/* Restore the window zoom state. */
-	if (zoomed && window_pane_visible(w->active))
+	if (zoomed)
 		window_zoom(w->active);
-
-	/* If the current pane is now not visible, move to the next. */
-	wp = w->active;
-	while (!window_pane_visible(w->active)) {
-		w->active = TAILQ_PREV(w->active, window_panes, entry);
-		if (w->active == NULL)
-			w->active = TAILQ_LAST(&w->panes, window_panes);
-		if (w->active == wp)
-			break;
-	}
-	if (w->active == w->last)
-		w->last = NULL;
 
 	server_redraw_window(w);
 	notify_window("window-layout-changed", w);
