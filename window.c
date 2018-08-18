@@ -898,7 +898,6 @@ window_pane_spawn(struct window_pane *wp, int argc, char **argv,
 #ifdef HAVE_UTEMPTER
 	char		 s[32];
 #endif
-	int		 i;
 	sigset_t	 set, oldset;
 
 	if (wp->fd != -1) {

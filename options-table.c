@@ -59,6 +59,9 @@ static const char *options_table_pane_status_list[] = {
 static const char *options_table_set_clipboard_list[] = {
 	"off", "external", "on", NULL
 };
+static const char *options_table_window_size_list[] = {
+	"largest", "smallest", "manual", NULL
+};
 
 /* Top-level options. */
 const struct options_table_entry options_table[] = {
@@ -588,22 +591,6 @@ const struct options_table_entry options_table[] = {
 	  .default_num = 1
 	},
 
-	{ .name = "force-height",
-	  .type = OPTIONS_TABLE_NUMBER,
-	  .scope = OPTIONS_TABLE_WINDOW,
-	  .minimum = 0,
-	  .maximum = INT_MAX,
-	  .default_num = 0
-	},
-
-	{ .name = "force-width",
-	  .type = OPTIONS_TABLE_NUMBER,
-	  .scope = OPTIONS_TABLE_WINDOW,
-	  .minimum = 0,
-	  .maximum = INT_MAX,
-	  .default_num = 0
-	},
-
 	{ .name = "main-pane-height",
 	  .type = OPTIONS_TABLE_NUMBER,
 	  .scope = OPTIONS_TABLE_WINDOW,
@@ -768,6 +755,13 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_STYLE,
 	  .scope = OPTIONS_TABLE_WINDOW,
 	  .default_str = "default"
+	},
+
+	{ .name = "window-size",
+	  .type = OPTIONS_TABLE_CHOICE,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .choices = options_table_window_size_list,
+	  .default_num = 1
 	},
 
 	{ .name = "window-style",
