@@ -361,7 +361,7 @@ session_new(struct session *s, const char *name, int argc, char **argv,
 	if (*shell == '\0' || areshell(shell))
 		shell = _PATH_BSHELL;
 
-	default_window_size(s, &sx, &sy);
+	default_window_size(s, &sx, &sy, -1);
 	hlimit = options_get_number(s->options, "history-limit");
 	env = environ_for_session(s, 0);
 	w = window_create_spawn(name, argc, argv, path, shell, cwd, env, s->tio,

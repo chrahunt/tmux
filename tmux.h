@@ -68,6 +68,10 @@ struct tmuxproc;
  */
 #define PANE_MINIMUM 2
 
+/* Minimum and maximum window size. */
+#define WINDOW_MINIMUM PANE_MINIMUM
+#define WINDOW_MAXIMUM 10000
+
 /* Automatic name refresh interval, in microseconds. Must be < 1 second. */
 #define NAME_INTERVAL 500000
 
@@ -1928,7 +1932,8 @@ void	 status_prompt_load_history(void);
 void	 status_prompt_save_history(void);
 
 /* resize.c */
-void	 default_window_size(struct session *, u_int *, u_int *);
+void	 resize_window(struct window *, u_int, u_int);
+void	 default_window_size(struct session *, u_int *, u_int *, int);
 void	 recalculate_sizes(void);
 
 /* input.c */

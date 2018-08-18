@@ -459,12 +459,15 @@ screen_redraw_screen(struct client *c, int draw_panes, int draw_status,
 	//             largest, smallest, manual
 	//      get rid of force-width and force-height and set with
 	//      a command (resize-window - flags to adjust, set or set to
-	//                 client?)
+	//                 what automatic would set to?)
 	// XXX get rid of aggressize-resize?
 	// XXX would s->default_s[xy] be better as an option?
+	// XXX do not allow windows smaller than layout and get rid of
+	//     window_pane_visible
+	// XXX edge cases - very small windows?
+	// XXX maximum window size
 	//
 	// XXX maybe a way to force offset to a particular part of window
-	// XXX maybe do not resize to smaller until asked
 
 	if (draw_borders)
 		screen_redraw_draw_borders(&ctx);

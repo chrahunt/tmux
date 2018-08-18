@@ -23,13 +23,44 @@
 #include "tmux.h"
 
 void
-default_window_size(struct session *s, u_int *sx, u_int *sy)
+resize_window(struct window *w, u_int sx, u_int sy)
+{
+	struct window_pane	*wp;
+	int			 zoomed;
+
+	/* Resize the window. */
+	zoomed = w->flags & WINDOW_ZOOMED;
+	if (zoomed)
+		window_unzoom(w);
+	layout_resize(w, sx, sy);
+	window_resize(w, sx, sy);
+	if (zoomed && window_pane_visible(w->active))
+		window_zoom(w->active);
+
+	/* If the current pane is now not visible, move to the next. */
+	wp = w->active;
+	while (!window_pane_visible(w->active)) {
+		w->active = TAILQ_PREV(w->active, window_panes, entry);
+		if (w->active == NULL)
+			w->active = TAILQ_LAST(&w->panes, window_panes);
+		if (w->active == wp)
+			break;
+	}
+	if (w->active == w->last)
+		w->last = NULL;
+
+	server_redraw_window(w);
+	notify_window("window-layout-changed", w);
+}
+
+void
+default_window_size(struct session *s, u_int *sx, u_int *sy, int type)
 {
 	struct client	*c;
 	u_int		 cx, cy;
-	int		 type;
 
-	type = options_get_number(global_w_options, "window-size");
+	if (type == -1)
+		type = options_get_number(global_w_options, "window-size");
 	if (type == WINDOW_SIZE_MANUAL)
 		goto manual;
 
@@ -168,29 +199,6 @@ recalculate_sizes(void)
 			continue;
 		log_debug("%s: @%u now %u,%u (was %u,%u)", __func__, w->id,
 		    sx, sy, w->sx, w->sy);
-
-		/* Resize the window. */
-		zoomed = w->flags & WINDOW_ZOOMED;
-		if (zoomed)
-			window_unzoom(w);
-		layout_resize(w, sx, sy);
-		window_resize(w, sx, sy);
-		if (zoomed && window_pane_visible(w->active))
-			window_zoom(w->active);
-
-		/* If the current pane is now not visible, move to the next. */
-		wp = w->active;
-		while (!window_pane_visible(w->active)) {
-			w->active = TAILQ_PREV(w->active, window_panes, entry);
-			if (w->active == NULL)
-				w->active = TAILQ_LAST(&w->panes, window_panes);
-			if (w->active == wp)
-			       break;
-		}
-		if (w->active == w->last)
-			w->last = NULL;
-
-		server_redraw_window(w);
-		notify_window("window-layout-changed", w);
+		resize_window(w, sx, sy);
 	}
 }
