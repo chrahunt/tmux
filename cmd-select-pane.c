@@ -87,8 +87,7 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 			window_redraw_active_switch(w, lastwp);
 			if (window_set_active_pane(w, lastwp)) {
 				cmd_find_from_winlink(current, wl, 0);
-				server_status_window(w);
-				server_redraw_window_borders(w);
+				server_redraw_window(w);
 			}
 		}
 		return (CMD_RETURN_NORMAL);
@@ -172,8 +171,7 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 	if (window_set_active_pane(w, wp)) {
 		cmd_find_from_winlink_pane(current, wl, wp, 0);
 		hooks_insert(s->hooks, item, current, "after-select-pane");
-		server_status_window(w);
-		server_redraw_window_borders(w);
+		server_redraw_window(w);
 	}
 
 	return (CMD_RETURN_NORMAL);

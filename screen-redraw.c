@@ -447,8 +447,9 @@ screen_redraw_screen(struct client *c, int draw_panes, int draw_status,
 	//     when cursor off until some timer expires
 	// XXX tty_window_offset should try to keep as much as active pane
 	//     visible as possible!
+	// XXX rather than centering cursor it might be better if only
+	//     moved offset when it gets close to an edge
 	//
-	// XXX get rid of aggressize-resize?
 	// XXX would s->default_s[xy] be better as an option?
 	// XXX edge cases - very small windows? looks like status line
 	//     gets mixed up
