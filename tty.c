@@ -64,6 +64,8 @@ static void	tty_redraw_region(struct tty *, const struct tty_ctx *);
 static void	tty_emulate_repeat(struct tty *, enum tty_code_code,
 		    enum tty_code_code, u_int);
 static void	tty_repeat_space(struct tty *, u_int);
+static void	tty_draw_pane(struct tty *, const struct window_pane *, u_int,
+		    u_int, u_int);
 static void	tty_cell(struct tty *, const struct grid_cell *,
 		    const struct window_pane *);
 static void	tty_default_colours(struct grid_cell *,
@@ -698,6 +700,98 @@ tty_repeat_space(struct tty *tty, u_int n)
 		tty_putn(tty, s, n, n);
 }
 
+/* Is this window larger than the terminal? */
+int
+tty_window_offset(struct tty *tty, struct window *w, u_int lines, u_int *ox,
+    u_int *oy, u_int *sx, u_int *sy)
+{
+	struct window_pane	*wp = w->active;
+	u_int			 cx, cy;
+
+	if (tty->sx >= w->sx && tty->sy - lines >= w->sy) {
+		*ox = 0;
+		*oy = 0;
+		*sx = w->sx;
+		*sy = w->sy;
+		return (0);
+	}
+
+	*sx = tty->sx;
+	*sy = tty->sy - lines;
+
+	if (~wp->screen->mode & MODE_CURSOR) {
+		*ox = 0;
+		*oy = 0;
+	} else {
+		cx = wp->xoff + wp->screen->cx;
+		cy = wp->yoff + wp->screen->cy;
+
+		if (cx < *sx)
+			*ox = 0;
+		else if (cx > w->sx - *sx)
+			*ox = w->sx - *sx;
+		else
+			*ox = cx - *sx / 2;
+
+		if (cy < *sy)
+			*oy = 0;
+		else if (cy > w->sy - *sy)
+			*oy = w->sy - *sy;
+		else
+			*oy = cy - *sy / 2;
+	}
+
+	return (1);
+}
+
+/* Redraw clients if offset has changed. */
+void
+tty_check_offset(struct window_pane *wp)
+{
+	struct window	*w;
+	struct client	*c;
+	u_int		 lines, ox, oy, sx, sy;
+
+	if (wp == NULL)
+		return;
+	w = wp->window;
+
+	TAILQ_FOREACH(c, &clients, entry) {
+		if (!tty_client_ready(c, wp))
+			continue;
+
+		lines = tty_status_lines(c);
+		if (!tty_window_offset(&c->tty, w, lines, &ox, &oy, &sx, &sy))
+			continue;
+		if (ox == c->tty.last_ox && oy == c->tty.last_oy)
+			continue;
+
+		c->flags |= CLIENT_REDRAW;
+
+		log_debug ("%s: %s %%%u offset has changed (%u,%u -> %u,%u)",
+		    __func__, c->name, wp->id, c->tty.last_ox, c->tty.last_oy,
+		    ox, oy);
+
+		c->tty.last_ox = ox;
+		c->tty.last_oy = oy;
+	}
+}
+
+/* How many lines are taken up by the status line on this client? */
+u_int
+tty_status_lines(struct client *c)
+{
+	u_int	lines;
+
+	if (c->flags & CLIENT_STATUSOFF)
+		lines = 0;
+	else
+		lines = status_line_size(c->session);
+	if (c->message_string != NULL || c->prompt_string != NULL)
+		lines = (lines == 0) ? 1 : lines;
+	return (lines);
+}
+
 /*
  * Is the region large enough to be worth redrawing once later rather than
  * probably several times now? Currently yes if it is more than 50% of the
@@ -871,11 +965,11 @@ tty_clear_area(struct tty *tty, const struct window_pane *wp, u_int py,
 		tty_clear_line(tty, wp, yy, px, nx, bg);
 }
 
-void
-tty_draw_pane(struct tty *tty, const struct window_pane *wp, u_int py, u_int ox,
-    u_int oy)
+static void
+tty_draw_pane(struct tty *tty, const struct window_pane *wp, u_int py,
+    u_int xoff, u_int yoff)
 {
-	tty_draw_line(tty, wp, wp->screen, py, ox, oy);
+	tty_draw_line(tty, wp, wp->screen, 0, py, UINT_MAX, xoff, yoff + py);
 }
 
 static const struct grid_cell *
@@ -904,16 +998,26 @@ tty_check_codeset(struct tty *tty, const struct grid_cell *gc)
 
 void
 tty_draw_line(struct tty *tty, const struct window_pane *wp,
-    struct screen *s, u_int py, u_int ox, u_int oy)
+    struct screen *s, u_int px, u_int py, u_int nx, u_int atx, u_int aty)
 {
 	struct grid		*gd = s->grid;
 	struct grid_cell	 gc, last;
 	const struct grid_cell	*gcp;
-	u_int			 i, j, ux, sx, nx, width;
+	struct grid_line	*gl;
+	u_int			 i, j, ux, sx, width;
 	int			 flags, cleared = 0;
 	char			 buf[512];
 	size_t			 len, old_len;
 	u_int			 cellsize;
+
+	log_debug("%s: px=%u py=%u nx=%u atx=%u aty=%u", __func__,
+	    px, py, nx, atx, aty);
+
+	/*
+	 * py is the line in the screen to draw.
+	 * px is the start x and nx is the width to draw.
+	 * atx,aty is the line on the terminal to draw it.
+	 */
 
 	flags = (tty->flags & TTY_NOCURSOR);
 	tty->flags |= TTY_NOCURSOR;
@@ -927,41 +1031,48 @@ tty_draw_line(struct tty *tty, const struct window_pane *wp,
 	 * there may be empty background cells after it (from BCE).
 	 */
 	sx = screen_size_x(s);
-
+	if (nx > sx)
+		nx = sx;
 	cellsize = grid_get_line(gd, gd->hsize + py)->cellsize;
 	if (sx > cellsize)
 		sx = cellsize;
 	if (sx > tty->sx)
 		sx = tty->sx;
+	if (sx > nx)
+		sx = nx;
 	ux = 0;
 
+	if (py == 0)
+		gl = NULL;
+	else
+		gl = grid_get_line(gd, gd->hsize + py - 1);
 	if (wp == NULL ||
-	    py == 0 ||
-	    (~grid_get_line(gd, gd->hsize + py - 1)->flags & GRID_LINE_WRAPPED) ||
-	    ox != 0 ||
+	    gl == NULL ||
+	    (~gl->flags & GRID_LINE_WRAPPED) ||
+	    atx != 0 ||
 	    tty->cx < tty->sx ||
-	    screen_size_x(s) < tty->sx) {
-		if (screen_size_x(s) < tty->sx &&
-		    ox == 0 &&
-		    sx != screen_size_x(s) &&
+	    nx < tty->sx) {
+		if (nx < tty->sx &&
+		    atx == 0 &&
+		    px + sx != nx &&
 		    tty_term_has(tty->term, TTYC_EL1) &&
 		    !tty_fake_bce(tty, wp, 8)) {
 			tty_default_attributes(tty, wp, 8);
-			tty_cursor(tty, screen_size_x(s) - 1, oy + py);
+			tty_cursor(tty, nx - 1, aty);
 			tty_putcode(tty, TTYC_EL1);
 			cleared = 1;
 		}
-		if (sx != 0)
-			tty_cursor(tty, ox, oy + py);
+		if (px + sx != 0)
+			tty_cursor(tty, atx, aty);
 	} else
-		log_debug("%s: wrapped line %u", __func__, oy + py);
+		log_debug("%s: wrapped line %u", __func__, aty);
 
 	memcpy(&last, &grid_default_cell, sizeof last);
 	len = 0;
 	width = 0;
 
 	for (i = 0; i < sx; i++) {
-		grid_view_get_cell(gd, i, py, &gc);
+		grid_view_get_cell(gd, px + i, py, &gc);
 		gcp = tty_check_codeset(tty, &gc);
 		if (len != 0 &&
 		    ((gcp->attr & GRID_ATTR_CHARSET) ||
@@ -969,7 +1080,7 @@ tty_draw_line(struct tty *tty, const struct window_pane *wp,
 		    gcp->attr != last.attr ||
 		    gcp->fg != last.fg ||
 		    gcp->bg != last.bg ||
-		    ux + width + gcp->data.width >= screen_size_x(s) ||
+		    ux + width + gcp->data.width >= nx ||
 		    (sizeof buf) - len < gcp->data.size)) {
 			tty_attributes(tty, &last, wp);
 			tty_putn(tty, buf, len, width);
@@ -983,10 +1094,10 @@ tty_draw_line(struct tty *tty, const struct window_pane *wp,
 			screen_select_cell(s, &last, gcp);
 		else
 			memcpy(&last, gcp, sizeof last);
-		if (ux + gcp->data.width > screen_size_x(s)) {
+		if (ux + gcp->data.width > nx) {
 			tty_attributes(tty, &last, wp);
 			for (j = 0; j < gcp->data.width; j++) {
-				if (ux + j > screen_size_x(s))
+				if (ux + j > nx)
 					break;
 				tty_putc(tty, ' ');
 				ux++;
@@ -1019,10 +1130,9 @@ tty_draw_line(struct tty *tty, const struct window_pane *wp,
 		}
 	}
 
-	if (!cleared && ux < screen_size_x(s)) {
-		nx = screen_size_x(s) - ux;
+	if (!cleared && ux < nx) {
 		tty_default_attributes(tty, wp, 8);
-		tty_clear_line(tty, wp, oy + py, ox + ux, nx, 8);
+		tty_clear_line(tty, wp, aty, atx + ux, nx - ux, 8);
 	}
 
 	tty->flags = (tty->flags & ~TTY_NOCURSOR) | flags;
@@ -1048,18 +1158,25 @@ tty_write(void (*cmdfn)(struct tty *, const struct tty_ctx *),
     struct tty_ctx *ctx)
 {
 	struct window_pane	*wp = ctx->wp;
+	struct window		*w;
 	struct client		*c;
+	u_int			 lines;
 
-	/* wp can be NULL if updating the screen but not the terminal. */
 	if (wp == NULL)
 		return;
-
 	if ((wp->flags & (PANE_REDRAW|PANE_DROP)) || !window_pane_visible(wp))
 		return;
+	w = wp->window;
 
 	TAILQ_FOREACH(c, &clients, entry) {
 		if (!tty_client_ready(c, wp))
 			continue;
+
+		lines = tty_status_lines(c);
+		if (c->tty.sx < w->sx || c->tty.sy - lines < w->sy) {
+			wp->flags |= PANE_REDRAW;
+			continue;
+		}
 
 		ctx->xoff = wp->xoff;
 		ctx->yoff = wp->yoff;

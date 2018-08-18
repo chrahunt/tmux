@@ -56,7 +56,7 @@ recalculate_sizes(void)
 		lines = status_line_size(s);
 
 		s->attached = 0;
-		ssx = ssy = UINT_MAX;
+		ssx = ssy = 0;
 		TAILQ_FOREACH(c, &clients, entry) {
 			if (c->flags & CLIENT_SUSPENDED)
 				continue;
@@ -64,22 +64,23 @@ recalculate_sizes(void)
 			    CLIENT_CONTROL)
 				continue;
 			if (c->session == s) {
-				if (c->tty.sx < ssx)
+				if (c->tty.sx > ssx)
 					ssx = c->tty.sx;
 				c->flags &= ~CLIENT_STATUSOFF;
-				if (lines != 0 && lines + PANE_MINIMUM > c->tty.sy)
+				if (lines != 0 &&
+				    lines + PANE_MINIMUM > c->tty.sy)
 					c->flags |= CLIENT_STATUSOFF;
 				if ((~c->flags & CLIENT_STATUSOFF) &&
 				    !(c->flags & CLIENT_CONTROL) &&
 				    c->tty.sy > lines &&
-				    c->tty.sy - lines < ssy)
+				    c->tty.sy - lines > ssy)
 					ssy = c->tty.sy - lines;
-				else if (c->tty.sy < ssy)
+				else if (c->tty.sy > ssy)
 					ssy = c->tty.sy;
 				s->attached++;
 			}
 		}
-		if (ssx == UINT_MAX || ssy == UINT_MAX) {
+		if (ssx == 0 || ssy == 0) {
 			s->flags |= SESSION_UNATTACHED;
 			continue;
 		}

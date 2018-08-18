@@ -1224,28 +1224,42 @@ server_client_reset_state(struct client *c)
 	struct window_pane	*wp = w->active, *loop;
 	struct screen		*s = wp->screen;
 	struct options		*oo = c->session->options;
-	int			 lines, mode;
+	int			 lines, mode, cursor = 0;
+	u_int			 cx = 0, cy = 0, ox, oy, sx, sy;
 
 	if (c->flags & (CLIENT_CONTROL|CLIENT_SUSPENDED))
 		return;
+	mode = s->mode;
 
 	tty_region_off(&c->tty);
 	tty_margin_off(&c->tty);
 
-	if (status_at_line(c) != 0)
-		lines = 0;
-	else
+	/* Move cursor to pane cursor and offset. */
+	cursor = 0;
+	if (window_pane_visible(wp)) {
 		lines = status_line_size(c->session);
-	if (!window_pane_visible(wp) || wp->yoff + s->cy >= c->tty.sy - lines)
-		tty_cursor(&c->tty, 0, 0);
-	else
-		tty_cursor(&c->tty, wp->xoff + s->cx, lines + wp->yoff + s->cy);
+		tty_window_offset(&c->tty, w, lines, &ox, &oy, &sx, &sy);
+		if (wp->xoff + s->cx >= ox &&
+		    wp->xoff + s->cx <= ox + sx &&
+		    wp->yoff + s->cy >= oy &&
+		    wp->yoff + s->cy <= oy + sy) {
+			cursor = 1;
+
+			cx = wp->xoff + s->cx - ox;
+			cy = wp->yoff + s->cy - oy;
+
+			if (status_at_line(c) == 0)
+				cy += lines;
+		}
+	}
+	if (!cursor)
+		mode &= ~MODE_CURSOR;
+	tty_cursor(&c->tty, cx, cy);
 
 	/*
 	 * Set mouse mode if requested. To support dragging, always use button
 	 * mode.
 	 */
-	mode = s->mode;
 	if (options_get_number(oo, "mouse")) {
 		mode &= ~ALL_MOUSE_MODES;
 		TAILQ_FOREACH(loop, &w->panes, entry) {

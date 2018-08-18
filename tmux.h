@@ -1040,6 +1040,9 @@ struct tty {
 	u_int		 cstyle;
 	char		*ccolour;
 
+	u_int		 last_ox;
+	u_int		 last_oy;
+
 	int		 mode;
 
 	u_int		 rlower;
@@ -1642,6 +1645,10 @@ struct environ *environ_for_session(struct session *, int);
 
 /* tty.c */
 void	tty_create_log(void);
+int	tty_window_offset(struct tty *, struct window *, u_int, u_int *,
+	    u_int *, u_int *, u_int *);
+void	tty_check_offset(struct window_pane *);
+u_int	tty_status_lines(struct client *);
 void	tty_raw(struct tty *, const char *);
 void	tty_attributes(struct tty *, const struct grid_cell *,
 	    const struct window_pane *);
@@ -1666,10 +1673,8 @@ void	tty_start_tty(struct tty *);
 void	tty_stop_tty(struct tty *);
 void	tty_set_title(struct tty *, const char *);
 void	tty_update_mode(struct tty *, int, struct screen *);
-void	tty_draw_pane(struct tty *, const struct window_pane *, u_int, u_int,
-	    u_int);
 void	tty_draw_line(struct tty *, const struct window_pane *, struct screen *,
-	    u_int, u_int, u_int);
+	    u_int, u_int, u_int, u_int, u_int);
 int	tty_open(struct tty *, char **);
 void	tty_close(struct tty *);
 void	tty_free(struct tty *);
