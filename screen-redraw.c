@@ -438,7 +438,6 @@ screen_redraw_screen(struct client *c, int draw_panes, int draw_status,
 		draw_status = 0;
 
 	// XXX mouse clicks
-	// XXX for tty_cmd_cell and tty_cmd_cells draw directly if will fit
 	// XXX some optimization for drawing with cursor off, eg emacs
 	//     moves to status line and back a lot - should avoid
 	//     redrawing with that happens, maybe do not change offset
