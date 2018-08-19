@@ -288,7 +288,6 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 		goto error;
 	}
 
-
 	/* Set the initial window name if one given. */
 	if (argc >= 0 && (tmp = args_get(args, 'n')) != NULL) {
 		cp = format_single(item, tmp, c, s, NULL, NULL);
