@@ -143,14 +143,19 @@ recalculate_sizes(void)
 	u_int		 sx, sy, cx, cy;
 	int		 flags, type, current, has;
 
-	/* Clear attached flags for each session. */
+	/*
+	 * Clear attached count and update saved status line information for
+	 * each session.
+	 */
 	RB_FOREACH(s, sessions, &sessions) {
-		s->flags |= SESSION_UNATTACHED;
 		s->attached = 0;
 		status_update_saved(s);
 	}
 
-	/* Set attached flags for any attached sessions. */
+	/*
+	 * Increment attached count and check the status line size for each
+	 * client.
+	 */
 	TAILQ_FOREACH(c, &clients, entry) {
 		if ((s = c->session) == NULL)
 			continue;
@@ -164,7 +169,6 @@ recalculate_sizes(void)
 		if (c->tty.sy <= tty_status_lines(c))
 			c->flags |= CLIENT_STATUSOFF;
 
-		s->flags &= ~SESSION_UNATTACHED;
 		s->attached++;
 	}
 
